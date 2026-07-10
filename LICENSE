@@ -1,0 +1,59 @@
+Skills Store Source-Available License
+Version 1.0
+
+Copyright (c) 2026 Timofey Murashov <murashov.timofey@gmail.com>
+All rights reserved.
+
+1. Definitions
+   "Software" means the source code, documentation, and other files
+   contained in this repository.
+   "Author" means the copyright holder listed above.
+   "You" means any individual or entity exercising rights under this
+   License.
+
+2. Grant of Rights
+   Subject to the terms and conditions of this License, the Author grants
+   You a worldwide, royalty-free, non-exclusive, non-transferable license
+   to:
+     (a) view and read the Software; and
+     (b) use the Software for personal, non-commercial purposes only.
+
+3. Restrictions
+   Except with the Author's prior written permission, You may NOT:
+     (a) use the Software, in whole or in part, for any commercial
+         purpose, including selling, licensing, sublicensing, renting,
+         or offering it (or any service based on it) for a fee;
+     (b) distribute, publish, or make available copies of the Software;
+     (c) modify, adapt, translate, or create derivative works based on
+         the Software, or distribute any such derivative works;
+     (d) fork the Software or reuse any part of it in another project;
+     (e) remove, alter, or obscure this License or any copyright,
+         authorship, or attribution notices.
+
+4. Reservation of Rights
+   All rights not expressly granted in this License are reserved by the
+   Author. This Software is source-available; it is NOT open source and
+   is NOT released under any OSI-approved open-source license.
+
+5. Requesting Permission
+   To request rights beyond those granted here (for example, commercial
+   use, distribution, or the creation of forks or derivative works),
+   contact the Author at murashov.timofey@gmail.com. Any such permission
+   must be granted in writing to be effective.
+
+6. Termination
+   This License and the rights granted herein terminate automatically if
+   You breach any of its terms. Upon termination, You must cease all use
+   of the Software and destroy all copies in Your possession or control.
+
+7. Disclaimer of Warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+   NON-INFRINGEMENT.
+
+8. Limitation of Liability
+   IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+   OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+   ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+   OTHER DEALINGS IN THE SOFTWARE.
