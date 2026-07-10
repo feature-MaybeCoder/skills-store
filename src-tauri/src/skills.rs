@@ -46,6 +46,35 @@ fn project_legacy(project_path: &Path) -> PathBuf {
     project_path.join(CODEX_REL)
 }
 
+fn codex_config_path() -> Result<PathBuf, String> {
+    Ok(home()?.join(".codex/config.toml"))
+}
+
+/// A directory is treated as a "project" when it holds any skills.
+fn project_has_skills(root: &Path) -> bool {
+    !list_skill_dirs(&project_target(root)).is_empty()
+        || !list_skill_dirs(&project_legacy(root)).is_empty()
+}
+
+/// Absolute project paths registered in Codex's `~/.codex/config.toml`
+/// (the `[projects."<path>"]` tables).
+fn codex_project_paths() -> Vec<String> {
+    let Ok(path) = codex_config_path() else {
+        return Vec::new();
+    };
+    let Ok(content) = fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    let Ok(value) = content.parse::<toml::Value>() else {
+        return Vec::new();
+    };
+    value
+        .get("projects")
+        .and_then(|v| v.as_table())
+        .map(|t| t.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -357,6 +386,39 @@ fn delete_skill_impl(skill: &SkillRef) -> Result<(), String> {
     Ok(())
 }
 
+/// Store folder name of an already-registered project with the given real path.
+fn find_project_by_path(projects_dir: &Path, path: &str) -> Option<String> {
+    let rd = fs::read_dir(projects_dir).ok()?;
+    for entry in rd.flatten() {
+        let pdir = entry.path();
+        if pdir.is_dir() && project_path_from_config(&pdir) == path {
+            return Some(entry.file_name().to_string_lossy().to_string());
+        }
+    }
+    None
+}
+
+/// Register a project in the store (creating `config.yaml`) if not already present.
+/// Returns the store folder name.
+fn register_project(projects_dir: &Path, path: &str) -> Result<String, String> {
+    if let Some(existing) = find_project_by_path(projects_dir, path) {
+        return Ok(existing);
+    }
+    let base = Path::new(path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let name = unique_project_name(projects_dir, &base, path);
+    let pdir = projects_dir.join(&name);
+    ensure_dir(&pdir)?;
+    let yaml = serde_yaml::to_string(&ProjectConfig {
+        path: path.to_string(),
+    })
+    .map_err(e2s)?;
+    fs::write(pdir.join("config.yaml"), yaml).map_err(e2s)?;
+    Ok(name)
+}
+
 /// Pick a store folder name for a project, avoiding collisions with unrelated projects.
 fn unique_project_name(projects_dir: &Path, base: &str, path: &str) -> String {
     let base = if base.is_empty() { "project" } else { base };
@@ -387,9 +449,18 @@ pub fn sync_all() -> Result<StoreState, String> {
     import_from(&global_target()?, &store_global_dir()?, true)?;
     import_from(&global_legacy()?, &store_global_dir()?, false)?;
 
-    // Projects: sync each registered project from its real location.
     let projects_dir = store_projects_dir()?;
     ensure_dir(&projects_dir)?;
+
+    // Auto-discover projects: any Codex-registered path that holds skills.
+    for path in codex_project_paths() {
+        let root = Path::new(&path);
+        if root.is_dir() && project_has_skills(root) {
+            register_project(&projects_dir, &path)?;
+        }
+    }
+
+    // Projects: sync each registered project from its real location.
     if let Ok(rd) = fs::read_dir(&projects_dir) {
         for entry in rd.flatten() {
             let pdir = entry.path();
@@ -417,19 +488,35 @@ pub fn add_project(path: String) -> Result<StoreState, String> {
     }
     let projects_dir = store_projects_dir()?;
     ensure_dir(&projects_dir)?;
-    let base = root
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
-    let name = unique_project_name(&projects_dir, &base, &path);
+    let name = register_project(&projects_dir, &path)?;
     let pdir = projects_dir.join(&name);
-    ensure_dir(&pdir)?;
-    let yaml = serde_yaml::to_string(&ProjectConfig { path: path.clone() }).map_err(e2s)?;
-    fs::write(pdir.join("config.yaml"), yaml).map_err(e2s)?;
 
     import_from(&project_target(root), &pdir, true)?;
     import_from(&project_legacy(root), &pdir, false)?;
 
+    read_state()
+}
+
+/// Copy a global skill into a project's store and enable it in the project target.
+#[tauri::command]
+pub fn add_skill_to_project(project: String, dir_name: String) -> Result<StoreState, String> {
+    let src = store_global_dir()?.join(&dir_name);
+    if !src.join("SKILL.md").is_file() {
+        return Err(format!("global skill '{dir_name}' not found"));
+    }
+    let pdir = store_projects_dir()?.join(&project);
+    if !pdir.is_dir() {
+        return Err(format!("project '{project}' not found"));
+    }
+    replace_dir(&src, &pdir.join(&dir_name))?;
+    set_enabled(
+        &SkillRef {
+            scope: "project".to_string(),
+            project: Some(project),
+            dir_name,
+        },
+        true,
+    )?;
     read_state()
 }
 

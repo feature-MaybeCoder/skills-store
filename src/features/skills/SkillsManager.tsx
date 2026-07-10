@@ -1,5 +1,5 @@
 import { AlertTriangle, Check, FolderPlus, Plus, RefreshCw, Trash2, X } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   type ProjectInfo,
@@ -15,6 +15,9 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Switch } from "@/shared/ui/switch";
 
 import { skillKey, useSkillsStore } from "./useSkillsStore";
+
+/** Custom drag payload: the folder name of a global skill being dragged onto a project. */
+const DND_MIME = "application/x-skill-dirname";
 
 export function SkillsManager() {
   const { state, selected, busy, error, run, toggleSelect, clearSelection } = useSkillsStore();
@@ -77,6 +80,9 @@ export function SkillsManager() {
     void mutate(() => skillsApi.removeProject(name));
   };
 
+  const onDropSkillToProject = (project: string, dirName: string) =>
+    run(() => skillsApi.addSkillToProject(project, dirName));
+
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
@@ -122,6 +128,7 @@ export function SkillsManager() {
                 skill={skill}
                 selected={selected.has(skillKey(ref))}
                 busy={busy}
+                draggable
                 onToggleSelect={() => toggleSelect(ref)}
                 onToggleEnabled={(v) => onToggleEnabled(ref, v)}
               />
@@ -152,6 +159,7 @@ export function SkillsManager() {
               onToggleSelect={toggleSelect}
               onToggleEnabled={onToggleEnabled}
               onRemove={() => onRemoveProject(project.name)}
+              onDropSkill={(dirName) => onDropSkillToProject(project.name, dirName)}
             />
           ))}
           {state && state.projects.length === 0 && (
@@ -244,10 +252,39 @@ function ProjectGroup(props: {
   onToggleSelect: (ref: SkillRef) => void;
   onToggleEnabled: (ref: SkillRef, enabled: boolean) => void;
   onRemove: () => void;
+  onDropSkill: (dirName: string) => void;
 }) {
   const { project } = props;
+  const [isOver, setIsOver] = useState(false);
+  const canDrop = project.exists && !props.busy;
+
+  const hasSkillPayload = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types).includes(DND_MIME);
+
   return (
-    <div className="mb-3">
+    // biome-ignore lint/a11y/noStaticElementInteractions: drop target for drag-and-drop of skills
+    <div
+      className={cn(
+        "mb-3 rounded-lg border border-transparent transition-colors",
+        isOver && "border-primary/50 bg-primary/5",
+      )}
+      onDragOver={(e) => {
+        if (!canDrop || !hasSkillPayload(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setIsOver(true);
+      }}
+      onDragLeave={() => setIsOver(false)}
+      onDrop={(e) => {
+        setIsOver(false);
+        if (!canDrop) return;
+        const dirName = e.dataTransfer.getData(DND_MIME);
+        if (dirName) {
+          e.preventDefault();
+          props.onDropSkill(dirName);
+        }
+      }}
+    >
       <div className="flex items-center justify-between gap-2 px-1 py-1">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 font-medium text-sm">
@@ -299,12 +336,28 @@ function SkillRow(props: {
   skill: SkillMeta;
   selected: boolean;
   busy: boolean;
+  draggable?: boolean;
   onToggleSelect: () => void;
   onToggleEnabled: (enabled: boolean) => void;
 }) {
   const { skill } = props;
   return (
-    <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/50">
+    // biome-ignore lint/a11y/noStaticElementInteractions: draggable skill row for drag-and-drop
+    <div
+      draggable={props.draggable}
+      onDragStart={
+        props.draggable
+          ? (e) => {
+              e.dataTransfer.setData(DND_MIME, skill.dirName);
+              e.dataTransfer.effectAllowed = "copy";
+            }
+          : undefined
+      }
+      className={cn(
+        "flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/50",
+        props.draggable && "cursor-grab active:cursor-grabbing",
+      )}
+    >
       <Switch
         checked={skill.enabled}
         disabled={props.busy}

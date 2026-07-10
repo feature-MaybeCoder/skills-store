@@ -35,6 +35,8 @@ export const skillsApi = {
   getState: () => invoke<StoreState>("get_state"),
   sync: () => invoke<StoreState>("sync_all"),
   addProject: (path: string) => invoke<StoreState>("add_project", { path }),
+  addSkillToProject: (project: string, dirName: string) =>
+    invoke<StoreState>("add_skill_to_project", { project, dirName }),
   removeProject: (name: string) => invoke<StoreState>("remove_project", { name }),
   importGlobalSkill: (source: string) => invoke<StoreState>("import_global_skill", { source }),
   setEnabled: (skills: SkillRef[], enabled: boolean) =>

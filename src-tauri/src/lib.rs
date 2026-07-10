@@ -13,6 +13,7 @@ pub fn run() {
             skills::get_state,
             skills::sync_all,
             skills::add_project,
+            skills::add_skill_to_project,
             skills::remove_project,
             skills::import_global_skill,
             skills::set_skills_enabled,
